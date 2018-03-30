@@ -1,26 +1,44 @@
 function Looper() {
   this.selection = -1;
+  this.recording = -1;
+
   this.tracks = [];
 
   this.elem = $('main .tracks');
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 5; i++) {
     this.addTrack();
   }
 }
 
-Looper.prototype.toggle = function() {
+Looper.prototype.toggleRecord = function() {
   if (this.selection == -1) return;
-  console.log(this.selection);
+
+  if (this.recording != -1) {
+    if (this.recording == this.selection) {
+      this.tracks[this.selection].stopRecord();
+      this.recording = -1;
+    }
+  } else {
+    // TODO use the timing
+    this.tracks[this.selection].startRecord();
+    this.recording = this.selection;
+  }
+};
+
+Looper.prototype.togglePlay = function() {
+  console.log('play');
 };
 
 Looper.prototype.left = function() {
   if (this.selection < 1) return;
+
   this.selection--;
   this._reselect();
 };
 
 Looper.prototype.right = function() {
   if (this.selection >= this.tracks.length - 1) return;
+
   this.selection++;
   this._reselect();
 };
@@ -52,10 +70,16 @@ Looper.prototype.addTrack = function() {
     looper._reselect();
   });
 
-  track.elem.click(function() {
-    looper.toggle();
+  track.elem.contextmenu(function(e) {
+    e.preventDefault();
+    looper.toggleRecord();
   });
 
+  track.elem.click(function(e) {
+    looper.togglePlay();
+  });
+
+  track.index = selection;
   this.tracks.push(track);
 }
 
@@ -63,8 +87,11 @@ Looper.prototype.addTrack = function() {
 function Track() {
   this.empty = true;
 
+  this.index = -1;
+
   this.elem = $('<div></div>')
     .addClass('track')
+    .empty()
     .append('record');
 }
 
@@ -76,14 +103,19 @@ Track.prototype.deselect = function() {
   this.elem.removeClass('selected');
 };
 
+Track.prototype.startRecord = function() {
+  this.elem
+    .css({'background-color': 'red'})
+    .empty()
+    .append('recording');
+};
 
-const COLORS = [
-  '#7b4b94',
-  '#ff3366',
-  '#2ec4b6',
-  '#7b4b94',
-  '#20a4f3',
-];
+Track.prototype.stopRecord = function() {
+  this.elem
+    .css({'background-color': '#eee', color: 'black'})
+    .empty()
+    .append('playing');
+};
 
 let looper;
 
@@ -92,8 +124,10 @@ $(document).ready(function() {
 });
 
 $(window).keypress(function(e) {
-  if (e.key == ' ') {
-    looper.toggle();
+  if (e.key == 'Enter') {
+    looper.toggleRecord();
+  } else if (e.key == ' ') {
+    looper.togglePlay();
   } else if (e.key == 'ArrowLeft') {
     looper.left();
   } else if (e.key == 'ArrowRight') {
