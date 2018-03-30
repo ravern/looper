@@ -1,0 +1,67 @@
+html {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+
+  color: white;
+  background-color: black;
+
+  font-family: monospace;
+}
+
+header {
+  flex: 0 1 auto;
+}
+
+header .logo {
+  display: block;
+  margin: 0.5rem 0;
+  text-align: center;
+
+  font-weight: bold;
+  font-size: 1.5rem;
+}
+
+main {
+  flex: 1 1 auto;
+  display: flex;
+}
+
+main .tracks {
+  flex: 1.5;
+  display: flex;
+}
+
+main .tracks .track {
+  flex: 1;
+}
+
+main .tracks .track:hover {
+  opacity: 0.9;
+}
+
+main .tracks .selected {
+
+}
+
+main .controls {
+  flex: 1;
+}
+
+footer {
+  flex: 0 1 40px;
+}
+
+footer .credit {
+  display: block;
+  margin: 0.5rem 0;
+  text-align: center;
+
+  font-size: 0.8rem;
+}
