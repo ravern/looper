@@ -34,20 +34,21 @@ main {
 }
 
 main .tracks {
-  flex: 1.5;
+  flex: 2;
   display: flex;
 }
 
 main .tracks .track {
   flex: 1;
-}
+  display: flex;
+  justify-content: center;
+  align-items: center;
 
-main .tracks .track:hover {
-  opacity: 0.9;
+  background-color: #222;
 }
 
 main .tracks .selected {
-
+  opacity: 0.9;
 }
 
 main .controls {
