@@ -3,7 +3,10 @@ function Looper() {
   this.recording = -1;
 
   this.tracks = [];
-  this.playing = []
+  this.playing = [];
+
+  this.timer = null;
+  this.interval = null;
 
   this.elem = $('main .tracks');
   for (let i = 0; i < 5; i++) {
@@ -18,17 +21,36 @@ Looper.prototype.toggleRecord = function() {
     if (this.recording == this.selection) {
       this.tracks[this.selection].stopRecord();
       this.recording = -1;
+
+      if (!this.interval) {
+        const now = (new Date()).getTime();
+        this.interval = now - this.timer;
+
+        setTimeout((function() {
+          this.loop();
+          setInterval(this.loop.bind(this), this.interval);
+        }).bind(this), 100);
+      }
     }
   } else {
-    // TODO use the timing
     this.tracks[this.selection].startRecord();
     this.recording = this.selection;
+
+    if (!this.timer) {
+      this.timer = (new Date()).getTime();
+    }
   }
 };
 
-Looper.prototype.togglePlay = function() {
+Looper.prototype.toggleMute = function() {
   if (this.selection == -1) return;
-  this.tracks[this.selection].togglePlay();
+  this.tracks[this.selection].toggleMute();
+};
+
+Looper.prototype.loop = function() {
+  for (track of this.tracks) {
+    track.play();
+  }
 };
 
 Looper.prototype.left = function() {
@@ -53,7 +75,7 @@ Looper.prototype._reselect = function() {
       this.tracks[i].deselect();
     }
   }
-}
+};
 
 Looper.prototype.addTrack = function() {
   const track = new Track();
@@ -78,7 +100,7 @@ Looper.prototype.addTrack = function() {
   }).bind(this));
 
   track.elem.click((function(e) {
-    this.togglePlay();
+    this.toggleMute();
   }).bind(this));
 
   this.tracks.push(track);
@@ -132,21 +154,50 @@ Track.prototype.stoppedRecord = function() {
   const url = URL.createObjectURL(blob);
 
   const audioElem = $('<audio></audio>')
-    .attr('loop', '')
     .prop('src', url);
-  this.audioElems.push(audioElem);
-  this.elem.append(audioElem);
+  audioElem.on('ended', (function() {
+    if (audioElem.plays > 0) {
+      audioElem.trigger('play');
+      audioElem.plays--;
+    }
+  }).bind(this));
   audioElem.trigger('play');
 
+  this.audioElems.push(audioElem);
+  this.elem.append(audioElem);
+
   this.chunks = [];
+
 };
 
-Track.prototype.togglePlay = function() {
+Track.prototype.play = function() {
+  for (const elem of this.audioElems) {
+    console.log(elem.prop('paused'));
+    if (!elem.prop('paused')) {
+      elem.plays = elem.plays || 0;
+      elem.plays++;
+    } else {
+      elem.trigger('play');
+    }
+  }
+};
+
+Track.prototype.toggleMute = function() {
   for (const elem of this.audioElems) {
     if (elem.prop('volume')) {
       elem.prop('volume', 0);
+
+      this.elem.find('span').remove();
+      this.elem
+        .css({'background-color': '#ccc', color: 'black'})
+        .prepend('<span>muted</span>');
     } else {
       elem.prop('volume', 1);
+
+      this.elem.find('span').remove();
+      this.elem
+        .css({'background-color': '#eee', color: 'black'})
+        .prepend('<span>playing</span>');
     }
   }
 };
@@ -175,7 +226,7 @@ $(window).keypress(function(e) {
   if (e.key == 'Enter') {
     looper.toggleRecord();
   } else if (e.key == ' ') {
-    looper.togglePlay();
+    looper.toggleMute();
   } else if (e.key == 'ArrowLeft') {
     looper.left();
   } else if (e.key == 'ArrowRight') {
