@@ -51,10 +51,6 @@ main .tracks .selected {
   opacity: 0.9;
 }
 
-main .controls {
-  flex: 1;
-}
-
 footer {
   flex: 0 1 40px;
 }

@@ -3,6 +3,7 @@ function Looper() {
   this.recording = -1;
 
   this.tracks = [];
+  this.playing = []
 
   this.elem = $('main .tracks');
   for (let i = 0; i < 5; i++) {
@@ -26,7 +27,8 @@ Looper.prototype.toggleRecord = function() {
 };
 
 Looper.prototype.togglePlay = function() {
-  console.log('play');
+  if (this.selection == -1) return;
+  this.tracks[this.selection].togglePlay();
 };
 
 Looper.prototype.left = function() {
@@ -88,8 +90,8 @@ function Track() {
 
   this.elem = $('<div></div>')
     .addClass('track')
-    .empty()
-    .append('record');
+    .append('<span>record</span>');
+  this.audioElems = [];
 
   this.chunks = [];
   this.recorder = new MediaRecorder(stream);
@@ -108,28 +110,45 @@ Track.prototype.deselect = function() {
 };
 
 Track.prototype.startRecord = function() {
+  this.elem.find('span').remove();
   this.elem
     .css({'background-color': 'red'})
-    .empty()
-    .append('recording');
+    .prepend('<span>recording</span>');
 
   this.recorder.start();
 };
 
 Track.prototype.stopRecord = function() {
+  this.elem.find('span').remove();
   this.elem
     .css({'background-color': '#eee', color: 'black'})
-    .empty()
-    .append('playing');
+    .prepend('<span>playing</span>');
 
   this.recorder.stop();
 };
 
 Track.prototype.stoppedRecord = function() {
   const blob = new Blob(this.chunks, {type: 'audio/ogg; codecs=opus'});
+  const url = URL.createObjectURL(blob);
+
+  const audioElem = $('<audio></audio>')
+    .attr('loop', '')
+    .prop('src', url);
+  this.audioElems.push(audioElem);
+  this.elem.append(audioElem);
+  audioElem.trigger('play');
+
   this.chunks = [];
-  const audioURL = URL.createObjectURL(blob);
-  this.elem.append($('<audio></audio>').attr('controls', '').attr('loop', '').prop('src', audioURL));
+};
+
+Track.prototype.togglePlay = function() {
+  for (const elem of this.audioElems) {
+    if (elem.prop('volume')) {
+      elem.prop('volume', 0);
+    } else {
+      elem.prop('volume', 1);
+    }
+  }
 };
 
 let looper;
