@@ -8,7 +8,7 @@ function Looper() {
   this.tracks = [];
 
   this.elem = $('main .tracks');
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 10; i++) {
     this.addTrack();
   }
 }
