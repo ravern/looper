@@ -1,12 +1,11 @@
 function Looper() {
   this.selection = -1;
+  this.pending = -1;
   this.recording = -1;
 
-  this.tracks = [];
-  this.playing = [];
+  this.first = null;
 
-  this.timer = null;
-  this.interval = null;
+  this.tracks = [];
 
   this.elem = $('main .tracks');
   for (let i = 0; i < 5; i++) {
@@ -19,25 +18,39 @@ Looper.prototype.toggleRecord = function() {
 
   if (this.recording != -1) {
     if (this.recording == this.selection) {
-      this.tracks[this.selection].stopRecord();
-      this.recording = -1;
+      if (this.recording == this.first) {
+        const recording = this.recording;
+        this.tracks[this.selection].stopRecord();
+        this.recording = -1;
 
-      if (!this.interval) {
-        const now = (new Date()).getTime();
-        this.interval = now - this.timer;
+        this.tracks[this.selection].loop = (function() {
+          if (this.recording != -1) {
+            this.tracks[this.recording].stopRecord();
+            this.recording = -1;
+          }
+          for (const track of this.tracks) {
+            track.play();
+          }
+          if (this.pending != -1) {
+            this.tracks[this.pending].startRecord();
+            this.recording = this.pending;
+            this.pending = -1;
+          }
+        }).bind(this);
 
         setTimeout((function() {
-          this.loop();
-          setInterval(this.loop.bind(this), this.interval);
+          this.tracks[recording].play();
         }).bind(this), 100);
       }
     }
   } else {
-    this.tracks[this.selection].startRecord();
-    this.recording = this.selection;
-
-    if (!this.timer) {
-      this.timer = (new Date()).getTime();
+    if (!this.first) {
+      this.first = this.selection;
+      this.tracks[this.selection].startRecord();
+      this.recording = this.selection;
+    } else if (this.pending == -1) {
+      this.pending = this.selection;
+      this.tracks[this.pending].pending();
     }
   }
 };
@@ -45,12 +58,6 @@ Looper.prototype.toggleRecord = function() {
 Looper.prototype.toggleMute = function() {
   if (this.selection == -1) return;
   this.tracks[this.selection].toggleMute();
-};
-
-Looper.prototype.loop = function() {
-  for (track of this.tracks) {
-    track.play();
-  }
 };
 
 Looper.prototype.left = function() {
@@ -109,6 +116,7 @@ Looper.prototype.addTrack = function() {
 
 function Track() {
   this.empty = true;
+  this.which = 0;
 
   this.elem = $('<div></div>')
     .addClass('track')
@@ -155,51 +163,56 @@ Track.prototype.stoppedRecord = function() {
 
   const audioElem = $('<audio></audio>')
     .prop('src', url);
-  audioElem.on('ended', (function() {
-    if (audioElem.plays > 0) {
-      audioElem.trigger('play');
-      audioElem.plays--;
-    }
-  }).bind(this));
-  audioElem.trigger('play');
+  if (this.loop) audioElem.on('ended', this.loop);
 
-  this.audioElems.push(audioElem);
-  this.elem.append(audioElem);
+  const audioElem2 = $('<audio></audio>')
+    .prop('src', url);
+  if (this.loop) audioElem2.on('ended', this.loop);
 
+  this.audioElems.push([audioElem, audioElem2]);
+  this.elem.append([audioElem, audioElem2]);
   this.chunks = [];
-
-};
-
-Track.prototype.play = function() {
-  for (const elem of this.audioElems) {
-    console.log(elem.prop('paused'));
-    if (!elem.prop('paused')) {
-      elem.plays = elem.plays || 0;
-      elem.plays++;
-    } else {
-      elem.trigger('play');
-    }
-  }
 };
 
 Track.prototype.toggleMute = function() {
-  for (const elem of this.audioElems) {
-    if (elem.prop('volume')) {
-      elem.prop('volume', 0);
-
-      this.elem.find('span').remove();
-      this.elem
-        .css({'background-color': '#ccc', color: 'black'})
-        .prepend('<span>muted</span>');
-    } else {
-      elem.prop('volume', 1);
-
-      this.elem.find('span').remove();
-      this.elem
-        .css({'background-color': '#eee', color: 'black'})
-        .prepend('<span>playing</span>');
+  for (const elems of this.audioElems) {
+    for (const elem of elems) {
+      if (elem.prop('volume')) {
+        elem.prop('volume', 0);
+        this.elem.find('span').remove();
+        this.elem
+          .css({'background-color': '#ccc', color: 'black'})
+          .prepend('<span>muted</span>');
+      } else {
+        elem.prop('volume', 1);
+        this.elem.find('span').remove();
+        this.elem
+          .css({'background-color': '#eee', color: 'black'})
+          .prepend('<span>playing</span>');
+      }
     }
   }
+};
+
+Track.prototype.play = function() {
+  if (this.which) {
+    for (const elems of this.audioElems) {
+      elems[this.which].trigger('play');
+    }
+    this.which = 0;
+  } else {
+    for (const elems of this.audioElems) {
+      elems[this.which].trigger('play');
+    }
+    this.which = 1;
+  }
+};
+
+Track.prototype.pending = function() {
+        this.elem.find('span').remove();
+        this.elem
+          .css({'background-color': '#400', color: 'white'})
+          .prepend('<span>waiting</span>');
 };
 
 let looper;
