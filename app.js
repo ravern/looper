@@ -58,28 +58,27 @@ Looper.prototype.addTrack = function() {
 
   this.elem.append(track.elem);
 
-  const looper = this;
-
   const selection = this.tracks.length;
-  track.elem.mousemove(function() {
-    looper.selection = selection;
-    looper._reselect();
-  });
-  track.elem.mouseleave(function() {
-    looper.selection = -1;
-    looper._reselect();
-  });
 
-  track.elem.contextmenu(function(e) {
+  track.elem.mousemove((function() {
+    this.selection = selection;
+    this._reselect();
+  }).bind(this));
+
+  track.elem.mouseleave((function() {
+    this.selection = -1;
+    this._reselect();
+  }).bind(this));
+
+  track.elem.contextmenu((function(e) {
     e.preventDefault();
-    looper.toggleRecord();
-  });
+    this.toggleRecord();
+  }).bind(this));
 
-  track.elem.click(function(e) {
-    looper.togglePlay();
-  });
+  track.elem.click((function(e) {
+    this.togglePlay();
+  }).bind(this));
 
-  track.index = selection;
   this.tracks.push(track);
 }
 
@@ -87,12 +86,17 @@ Looper.prototype.addTrack = function() {
 function Track() {
   this.empty = true;
 
-  this.index = -1;
-
   this.elem = $('<div></div>')
     .addClass('track')
     .empty()
     .append('record');
+
+  this.chunks = [];
+  this.recorder = new MediaRecorder(stream);
+  this.recorder.ondataavailable = (function(e) {
+    this.chunks.push(e.data);
+  }).bind(this);
+  this.recorder.onstop = this.stoppedRecord.bind(this);
 }
 
 Track.prototype.select = function() {
@@ -108,6 +112,8 @@ Track.prototype.startRecord = function() {
     .css({'background-color': 'red'})
     .empty()
     .append('recording');
+
+  this.recorder.start();
 };
 
 Track.prototype.stopRecord = function() {
@@ -115,12 +121,35 @@ Track.prototype.stopRecord = function() {
     .css({'background-color': '#eee', color: 'black'})
     .empty()
     .append('playing');
+
+  this.recorder.stop();
+};
+
+Track.prototype.stoppedRecord = function() {
+  const blob = new Blob(this.chunks, {type: 'audio/ogg; codecs=opus'});
+  this.chunks = [];
+  const audioURL = URL.createObjectURL(blob);
+  this.elem.append($('<audio></audio>').attr('controls', '').attr('loop', '').prop('src', audioURL));
 };
 
 let looper;
+let stream;
 
 $(document).ready(function() {
-  looper = new Looper();
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({audio: true})
+      .then(function(str) {
+        stream = str;
+
+        // Do the init code in here
+        looper = new Looper();
+      })
+      .catch(function(err) {
+        console.error(err);
+      });
+  } else {
+    console.error('getUserMedia not supported!');
+  }
 });
 
 $(window).keypress(function(e) {
