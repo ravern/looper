@@ -1,5 +1,5 @@
-# Looooper
-Looooper is a loop machine, which will loop your music automatically,
+# Looper
+Looper is a loop machine, which will loop your music automatically,
 after you record it. Some examples include Ed Sheeran's live shows
 and Beca's final performance in Pitch Perfect 3.
 
